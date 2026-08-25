@@ -335,11 +335,87 @@ async function handleForm(e){
 }
 </script>
 </body>
+`;
+
+const PASSWORD = 'jelen';
+const COOKIE_NAME = 'pj_preview';
+
+const LOGIN_HTML = `<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Petr Jelínek — Fotograf Praha</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0d0d0d;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif}
+  .box{text-align:center;padding:3rem 2.5rem;max-width:360px;width:100%}
+  .logo{font-size:.75rem;letter-spacing:.3em;text-transform:uppercase;color:#C8A96E;margin-bottom:.3rem}
+  .logo span{display:block;font-size:1.3rem;letter-spacing:.08em;color:#e8e8e8;margin-bottom:2rem}
+  input{width:100%;background:#181818;border:1px solid #333;color:#e8e8e8;padding:.8rem 1rem;font-size:1rem;letter-spacing:.1em;text-align:center;outline:none;transition:border .2s}
+  input:focus{border-color:#C8A96E}
+  button{margin-top:1rem;width:100%;background:#C8A96E;border:none;color:#0d0d0d;padding:.8rem 1rem;font-size:.8rem;letter-spacing:.2em;text-transform:uppercase;font-weight:700;cursor:pointer;transition:opacity .2s}
+  button:hover{opacity:.85}
+  .err{color:#e05555;font-size:.8rem;margin-top:.8rem;display:none}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="logo">Petr Jelínek<span>Fotograf Praha</span></div>
+  <form method="POST" action="/login">
+    <input type="password" name="pwd" placeholder="Heslo" autofocus>
+    <button type="submit">Vstoupit →</button>
+    <p class="err" id="err">{{ERR}}</p>
+  </form>
+</div>
+<script>
+  if(document.getElementById('err').textContent.trim()){
+    document.getElementById('err').style.display='block';
+  }
+</script>
+</body>
 </html>`;
+
+function parseCookies(header) {
+  const cookies = {};
+  if (!header) return cookies;
+  header.split(';').forEach(c => {
+    const [k, ...v] = c.trim().split('=');
+    cookies[k] = v.join('=');
+  });
+  return cookies;
+}
 
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+
+    // Login form handler
+    if (url.pathname === '/login' && request.method === 'POST') {
+      const body = await request.formData();
+      const pwd = body.get('pwd') || '';
+      if (pwd === PASSWORD) {
+        return new Response('', {
+          status: 302,
+          headers: {
+            'Location': '/',
+            'Set-Cookie': `${COOKIE_NAME}=1; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`,
+          }
+        });
+      }
+      return new Response(LOGIN_HTML.replace('{{ERR}}', 'Špatné heslo'), {
+        status: 401,
+        headers: { 'Content-Type': 'text/html; charset=utf-8' }
+      });
+    }
+
+    // Password gate — check cookie
+    const cookies = parseCookies(request.headers.get('Cookie'));
+    if (cookies[COOKIE_NAME] !== '1') {
+      return new Response(LOGIN_HTML.replace('{{ERR}}', ''), {
+        headers: { 'Content-Type': 'text/html; charset=utf-8' }
+      });
+    }
 
     // Contact form handler (POST /contact)
     if (url.pathname === '/contact' && request.method === 'POST') {
