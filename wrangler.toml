@@ -1,0 +1,11 @@
+name = "petrjelinek"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+[[routes]]
+pattern = "petrjelinek.cz"
+zone_name = "petrjelinek.cz"
+
+[[routes]]
+pattern = "www.petrjelinek.cz/*"
+zone_name = "petrjelinek.cz"
